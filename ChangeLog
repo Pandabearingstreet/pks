@@ -1,0 +1,101 @@
+Changes in 0.6-1
+
+  * Vignette and schoolarithm.Rd: fix typos
+
+Changes in 0.6-0
+
+  * DESCRIPTION: suggests relations and Rgraphviz for plotting knowledge
+    structures and precedence relations, see examples in is.subset() and
+    in ita()
+  * New vignette: vignette("EstimationStepByStep", package = "pks"), parameter
+    estimation methods implemented in the package
+  * New function: slm(), fitting and testing simple learning models
+  * New function: getKFringe(), outer and inner fringes of a knowledge
+    structure
+  * New function: is.downgradable(), check for downgradabiliy
+  * conversion.R: as.pattern(..., useNames = TRUE) uses item names to
+    represent response patterns, as.letters argument is deprecated
+  * ita.R: ita() gains search argument for local or global threshold search;
+    returns precedence relation as a logical incidence matrix
+  * New function: is.subset(), subset relation incidence matrix
+  * New function: blimit(), BLIM identification analysis (adapted from
+    Stefanutti et al., 2012)
+  * New data sets: fraction17 (Stefanutti and de Chiusole, 2017),
+    subtraction13 (de Chiusole and Stefanutti, 2013)
+
+Changes in 0.5-0
+
+  * blim(): use (if possible) matrix multiplication to compute the conditional
+    distribution of response patterns given knowledge state; remove deprecated
+    errequal and errtype arguments; increase default zeropad to 16
+  * New function: ita(), item tree analysis
+  * conversion.R: as.binmat() gains as.logical argument
+  * chess data: correct mistakes in dst1 and dst4; add raw data and
+    replication code
+  * *.Rd: update references
+
+Changes in 0.4-1
+
+  * BUG FIX: blim(..., method = "MDML") could fail when (b)eta estimates were
+    too close to zero (reported by Martin Losert)
+  * *.Rd: add DOIs to all references
+  * DESCRIPTION: new URL
+
+Changes in 0.4-0
+
+  * blim(): more flexible infrastructure for setting parameter constraints;
+    errequal and errtype arguments are now deprecated in favor of
+    betaequal/etaequal and betafix/etafix
+  * New functions: anova.blim(), coef.blim(), deviance.blim()
+  * as.pattern(..., as.set = TRUE), as.binmat(): work in more cases including
+    when R or N.R do not contain the empty set
+  * chess and probability data sets: extended examples
+  * NAMESPACE: import graphics
+
+Changes in 0.3-1
+
+  * BUG FIX: delineate() could return wrong knowledge structure when skillfun
+    had numeric itemIDs (or factor itemIDs in non-alphabetic order)
+  * New function: jacobian(), Jacobian matrix of a BLIM (draft version)
+  * delineate(): each element of classes is now a matrix; itemID is now the
+    index of the column that holds the item indicator
+  * blim(): new zeropad argument; per default, an incomplete response vector
+    is completed and padded with zeros
+
+Changes in 0.3-0
+
+  * New function: delineate(), knowledge structure delineated by skill
+    function
+  * New functions: is.forward.graded(), is.backward.graded()
+  * blim(): add random initial values for randinit = TRUE
+  * tests/sampling.R: add tests for uniform sampling
+  * blim(): recalculate degrees of freedom in goodness-of-fit test
+  * as.pattern(): add as.set argument; if TRUE return value is of class "set"
+  * as.binmat(): conversion from class set to matrix 
+  * DESCRIPTION: depend on package sets
+
+Changes in 0.2-1
+
+  * BUG FIX: simulate.blim() made incorrect predictions
+  * New data set: endm
+  * CITATION: add reference to ENDM paper
+
+Changes in 0.2-0
+
+  * BUG FIX: likelihood and fitted values reported by blim() were incorrect
+  * blim(): add estimators for errequal = TRUE, speed up some computations
+  * New data sets: density97, matter97
+  * as.pattern(): add as.letters argument for a letter representation of
+    response patterns
+  * CITATION: add reference to Psychoco 2012 talk
+
+Changes in 0.1-0
+
+  * initial release on CRAN
+  * Function blim() for fitting and testing basic local independence models
+  * Extractor functions for blim objects (some work automatically by
+    inheritance): simulate(), print(), logLik(), nobs(), resid(), fitted(),
+    plot(), AIC(), BIC()
+  * Conversion functions: as.pattern() and as.binmat()
+  * Data sets: DoignonFalmagne7, chess, probability
+
