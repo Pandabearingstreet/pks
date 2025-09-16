@@ -1,0 +1,27 @@
+# RStudio files
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# R build artifacts
+*.tar.gz
+*.Rcheck/
+/build/
+/inst/doc/
+
+# Compiled code
+*.o
+*.so
+*.dll
+
+# Temporary files
+*~
+.DS_Store
+Thumbs.db
+
+# Package specific
+/src/*.o
+/src/*.so
+/src/*.dll
+
