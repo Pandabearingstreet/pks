@@ -10,44 +10,23 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// collapse_states_cpp
-DataFrame collapse_states_cpp(const DataFrame& bloated_states);
-RcppExport SEXP _pks_collapse_states_cpp(SEXP bloated_statesSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const DataFrame& >::type bloated_states(bloated_statesSEXP);
-    rcpp_result_gen = Rcpp::wrap(collapse_states_cpp(bloated_states));
-    return rcpp_result_gen;
-END_RCPP
-}
 // compute_concepts
-Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context);
-RcppExport SEXP _pks_compute_concepts(SEXP input_contextSEXP) {
+Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool was_dis, Nullable<NumericVector> item_idx_, bool give_full_matrix_result);
+RcppExport SEXP _pks_compute_concepts(SEXP input_contextSEXP, SEXP was_disSEXP, SEXP item_idx_SEXP, SEXP give_full_matrix_resultSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::LogicalMatrix >::type input_context(input_contextSEXP);
-    rcpp_result_gen = Rcpp::wrap(compute_concepts(input_context));
-    return rcpp_result_gen;
-END_RCPP
-}
-// concat_rows
-CharacterVector concat_rows(LogicalMatrix mat);
-RcppExport SEXP _pks_concat_rows(SEXP matSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< LogicalMatrix >::type mat(matSEXP);
-    rcpp_result_gen = Rcpp::wrap(concat_rows(mat));
+    Rcpp::traits::input_parameter< bool >::type was_dis(was_disSEXP);
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type item_idx_(item_idx_SEXP);
+    Rcpp::traits::input_parameter< bool >::type give_full_matrix_result(give_full_matrix_resultSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_concepts(input_context, was_dis, item_idx_, give_full_matrix_result));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_pks_collapse_states_cpp", (DL_FUNC) &_pks_collapse_states_cpp, 1},
-    {"_pks_compute_concepts", (DL_FUNC) &_pks_compute_concepts, 1},
-    {"_pks_concat_rows", (DL_FUNC) &_pks_concat_rows, 1},
+    {"_pks_compute_concepts", (DL_FUNC) &_pks_compute_concepts, 4},
     {NULL, NULL, 0}
 };
 

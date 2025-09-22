@@ -1,271 +1,196 @@
-#' Generate a Random Skill Function
-#' 
-#' Creates a random skill function with specified properties for testing and
-#' simulation purposes.
-#' 
-#' The skill function indicates which skills are required to solve each item.
-#' This function can generate conjunctive, disjunctive, or mixed skill functions
-#' with controlled sparsity.
-#' 
-#' @param seed random seed for reproducibility
-#' @param sparsity probability of a skill being required for an item (between 0 and 1)
-#' @param uniqueItems number of unique item labels to generate
-#' @param items number of items in the skill function
-#' @param skills number of skills in the skill function
-#' @param conjunctive logical; if TRUE, ensures each item label appears only once
-#' @param disjunctive logical; if TRUE, ensures each item requires at most one skill
-#' @return A data frame representing the skill function with columns for item labels
-#'   and binary indicators for each skill
-#' @export generate.skillfun
-generate.skillfun <- function(seed = 42, 
-                              sparsity = 0.1, 
-                              uniqueItems = 7, 
-                              items = 6, 
-                              skills = 12, 
-                              conjunctive = FALSE, 
-                              disjunctive = FALSE) {
-  set.seed(seed)
+generate.skillfun <- function(seed = 42,
+                              sparsity = 0.1,
+                              items = 6,
+                              skills = 12,
+                              conjunctive = FALSE,
+                              disjunctive = FALSE,
+                              lambda = 1) {
 
-  # Validate uniqueness constraint
-  if (conjunctive && items > uniqueItems) {
-    stop("Cannot generate unique item names: 'items' > 'uniqueItems'")
+  ## --- Input validation ---
+  if (!is.numeric(seed) || length(seed) != 1) stop("`seed` must be a single numeric.")
+  if (!is.numeric(sparsity) || length(sparsity) != 1 ||
+      sparsity < 0 || sparsity > 1) stop("`sparsity` must be > 0  & < 1.")
+  if (!is.numeric(items) || items < 1 || floor(items) != items) stop("`items` must be an integer >= 1.")
+  if (!is.numeric(skills) || skills < 1 || floor(skills) != skills) stop("`skills` must be an integer >= 1.")
+  if (conjunctive && disjunctive) stop("Set at most one of `conjunctive` or `disjunctive` to TRUE.")
+  if (!is.logical(conjunctive) || !is.logical(disjunctive)) stop("`conjunctive` and `disjunctive` must be logical.")
+
+  set.seed(as.integer(seed))
+
+  skill_names <- paste0("s", seq_len(skills))
+  item_names  <- paste0("item", seq_len(items))
+
+  ## Helper: check non-conflict (no equality, no subset/subset-of) with an existing matrix
+  non_conflict_with_existing <- function(candidate, existing_mat) {
+    # existing_mat: matrix with rows as logical vectors (same length as candidate) or matrix(0,ncol=skills)
+    if (is.null(existing_mat) || nrow(existing_mat) == 0) return(TRUE)
+    # candidate subset of existing: for a row r, all(candidate <= r) -> sum(candidate & !r) == 0
+    cand_subset_existing <- rowSums(candidate & (!existing_mat)) == 0
+    # existing subset of candidate: for row r, all(r <= candidate) -> sum(r & !candidate) == 0
+    existing_subset_cand <- rowSums(existing_mat & (!candidate)) == 0
+    !( any(cand_subset_existing) || any(existing_subset_cand) )
   }
 
-  # Generate item label pool as "item_1", "item_2", ...
-  label_pool <- paste0("item_", 1:uniqueItems)
+  ## Sperner bound for one item (max size of antichain on `skills` elements)
+  max_antichain <- choose(skills, floor(skills / 2))
 
-  # Sample item labels
-  item_labels <- if (conjunctive) {
-    sample(label_pool, items, replace = FALSE)
-  } else {
-    sample(label_pool, items, replace = TRUE)
-  }
+  ## Storage: for general mode we keep a list where each element is a matrix of competencies for that item
+  existing_by_item <- vector("list", length = items)
+  for (i in seq_len(items)) existing_by_item[[i]] <- matrix(nrow = 0, ncol = skills)
 
-  # Initialize skill matrix
-  skill_matrix <- matrix(0, nrow = items, ncol = skills)
+  comp_items <- character(0)  # will parallel rows we create
+  existing_rows <- matrix(nrow = 0, ncol = skills) # flattened storage for final assembly (rows in order of creation)
 
-  if (disjunctive) {
-    # At most one skill per item
-    for (i in 1:items) {
-      if (runif(1) < sparsity) {
-        skill_matrix[i, sample(1:skills, 1)] <- 1
-      }
+  ## Mode: conjunctive/disjunctive (one competency per item) ----------------
+  if (conjunctive || disjunctive) {
+    n_competencies <- items
+    # sizes ~ Binomial(skills, sparsity)
+    sizes <- rbinom(n_competencies, size = skills, prob = sparsity)
+    sizes[sizes < 1] <- 1
+
+    for (i in seq_len(items)) {
+      target_size <- sizes[i]
+      candidate_idx <- sample(skills, target_size)
+      candidate <- rep(FALSE, skills)
+      candidate[candidate_idx] <- TRUE
+      existing_rows <- rbind(existing_rows, as.integer(candidate))
     }
+    comp_items <- item_names
   } else {
-    # Multiple skills per item allowed
-    skill_matrix <- matrix(rbinom(items * skills, 1, sparsity), nrow = items)
-  }
+    ## General model: each item gets multiple alternative conjunctive competencies
+    # number of alternatives per item: Poisson(1) + 1 by default (small)
+    max_alt_possible <- max_antichain  # per-item upper bound
+    num_alt <- pmin(pmax(1, rpois(items, lambda = lambda)), max_alt_possible)
 
-  colnames(skill_matrix) <- paste0("s", 1:skills)
-  df <- data.frame(item = item_labels, skill_matrix, row.names = NULL)
-  
-  # Ensure no empty rows by adding a random skill to any row with all zeros
-  empty_rows <- which(rowSums(df[sapply(df, is.numeric)]) == 0)
-  for (i in empty_rows) {
-    random_skill <- sample(1:skills, 1)
-    df[i, random_skill + 1] <- 1  # +1 because first column is item
-  }
-  
-  # Ensure no row for the same item is a subset of another
-  for (item in unique(df$item)) {
-    item_rows <- which(df$item == item)
-    if (length(item_rows) > 1) {
-      skill_cols <- which(sapply(df, is.numeric))
-      
-      # Check each pair of rows
-      for (i in 1:(length(item_rows)-1)) {
-        for (j in (i+1):length(item_rows)) {
-          row_i <- as.logical(as.numeric(df[item_rows[i], skill_cols]))
-          row_j <- as.logical(as.numeric(df[item_rows[j], skill_cols]))
-          
-          # Check if row_i is subset of row_j
-          if (all(row_i & row_j == row_i)) {
-            # Add a random skill to row_i that's not in row_j
-            potential_skills <- which(!row_j & (1:skills == 1:skills))
-            if (length(potential_skills) > 0) {
-              new_skill <- sample(potential_skills, 1)
-              df[item_rows[i], skill_cols[new_skill]] <- 1
-            }
+    # safety check: per-item alternatives cannot exceed Sperner bound
+    if (any(num_alt > max_antichain)) {
+      stop("At least one item requests more alternatives than the Sperner bound allows for the given `skills`.")
+    }
+
+    for (i in seq_len(items)) {
+      for (rep_idx in seq_len(num_alt[i])) {
+        attempts <- 0
+        accepted <- FALSE
+        while (!accepted) {
+          attempts <- attempts + 1
+          if (attempts > 5000) {
+            break
           }
-          # Check if row_j is subset of row_i
-          else if (all(row_j & row_i == row_j)) {
-            # Add a random skill to row_j that's not in row_i
-            potential_skills <- which(!row_i & (1:skills == 1:skills))
-            if (length(potential_skills) > 0) {
-              new_skill <- sample(potential_skills, 1)
-              df[item_rows[j], skill_cols[new_skill]] <- 1
-            }
-          }
-          # Check if rows are identical
-          else if (all(row_i == row_j)) {
-            # Add a random skill to row_j
-            potential_skills <- which(!row_j & (1:skills == 1:skills))
-            if (length(potential_skills) > 0) {
-              new_skill <- sample(potential_skills, 1)
-              df[item_rows[j], skill_cols[new_skill]] <- 1
-            }
+          # competency size drawn from Binomial; ensure >=1
+          size_k <- rbinom(1, size = skills, prob = sparsity)
+          if (size_k < 1) size_k <- 1
+          candidate_idx <- sample(skills, size_k)
+          candidate <- rep(FALSE, skills); candidate[candidate_idx] <- TRUE
+
+          # critical change: check non-conflict only against competencies for the *same* item i
+          if (non_conflict_with_existing(candidate, existing_by_item[[i]])) {
+            existing_by_item[[i]] <- rbind(existing_by_item[[i]], candidate)
+            existing_rows <- rbind(existing_rows, as.integer(candidate))
+            comp_items <- c(comp_items, item_names[i])
+            accepted <- TRUE
           }
         }
       }
     }
   }
-  
+
+  ## Build output data.frame: first column 'item', then s1..sK
+  df <- as.data.frame(existing_rows, stringsAsFactors = FALSE)
+  colnames(df) <- skill_names
+  df <- cbind(item = comp_items, df, stringsAsFactors = FALSE)
+  rownames(df) <- NULL
+  if (disjunctive) {
+    df <- make_con_to_dis(df)
+  }
   return(df)
 }
 
-##################################################
-# Helper functions for delineation by skill function type
-
-#' Convert a disjunctive skill function to a conjunctive one
-#' 
-#' @param sf a data frame representing a disjunctive skill function
-#' @return a data frame representing the equivalent conjunctive skill function
 make_dis_to_con <- function(sf) {
   # Create an empty matrix for the conjunctive context
   unique_objects <- unique(sf$item)
   I_con <- matrix(0, nrow = length(unique_objects), ncol = ncol(sf) - 1)
   colnames(I_con) <- colnames(sf)[-1]
-  #rownames(I_con) <- unique_objects
-  
+
   # Sum the attribute values for each unique object
   for (i in seq_along(unique_objects)) {
     obj <- unique_objects[i]
     obj_rows <- sf[sf$item == obj, -1]
-    I_con[i, ] <- colSums(obj_rows)
+    I_con[i, ] <- as.integer(apply(obj_rows, 2, any))
   }
   
-  # Convert back to data frame
+
   I_con <- data.frame(item = unique_objects, I_con)
   return(I_con)
 }
 
-#' Convert a conjunctive skill function to a disjunctive one
-#' 
-#' @param sf a data frame representing a conjunctive skill function
-#' @return a data frame representing the equivalent disjunctive skill function
 make_con_to_dis <- function(sf) {
-  new_objects <- c()
-  I_dis <- matrix()
+  if (!"item" %in% colnames(sf)) stop("Input must have a column named 'item'.")
+  
+  skill_cols <- setdiff(colnames(sf), "item")
+  out_list <- list()
   
   for (i in seq_len(nrow(sf))) {
-    row <- sf[i, -1]  # Exclude the item column
-    object <- sf$item[i]
+    item_name <- sf$item[i]
+    row_skills <- sf[i, skill_cols, drop = FALSE]
+    active_skills <- skill_cols[as.logical(row_skills)]
     
-    # Find indices where the value is 1
-    indices <- which(row == 1)
-    
-    if (length(indices) == 1) {
-      I_dis <- rbind(I_dis, row)
-      new_objects <- c(new_objects, object)
-    } else {
-      for (index in indices) {
-        new_row <- rep(0, ncol(row))
-        new_row[index] <- 1
-        I_dis <- rbind(I_dis, new_row)
-        new_objects <- c(new_objects, object)
-      }
+    for (s in active_skills) {
+      new_row <- as.list(rep(0, length(skill_cols)))
+      names(new_row) <- skill_cols
+      new_row[[s]] <- 1
+      out_list[[length(out_list) + 1]] <- c(item = item_name, new_row)
     }
   }
   
-  I_dis <- data.frame(item = new_objects, I_dis)
-  colnames(I_dis) <- colnames(sf)
-  return(I_dis)
+  out_df <- do.call(rbind, lapply(out_list, as.data.frame, stringsAsFactors = FALSE))
+  rownames(out_df) <- NULL
+  return(out_df)
 }
 
-#' Check if a skill function is conjunctive
-#' 
-#' @param skillfun a data frame representing a skill function
-#' @param itemID index of the column in \code{skillfun} that holds the item indicator
-#' @return logical indicating whether the skill function is conjunctive
 isCon <- function(skillfun, itemID){
   item.names <- as.character(skillfun[, itemID])
   return(length(item.names) == length(unique(item.names)))
 }
 
-#' Check if a skill function is disjunctive
-#' 
-#' @param skillfun a data frame representing a skill function
-#' @param itemID index of the column in \code{skillfun} that holds the item indicator
-#' @return logical indicating whether the skill function is disjunctive
+
 isDis <- function(skillfun, itemID){
   rowSums <- rowSums(skillfun[, -itemID])
   return(all(rowSums<=1))
 }
 
-#' Compare two knowledge structures for equality
-#' 
-#' Checks if two knowledge structures contain the same states.
-#' 
-#' @param K1 first knowledge structure
-#' @param K2 second knowledge structure
-#' @return logical indicating whether the knowledge structures are equal
-#' @export K.are.same
+
 K.are.same <- function(K1, K2){
-  for (state in rownames(K1)){
-    if (!(state %in% rownames(K2))){
+  if (nrow(K1) != nrow(K2)){
+    return(FALSE)
+  }
+  for (state in as.pattern(K1)){
+    if (!(state %in% as.pattern(K2))){
       return(FALSE)
     }
   }
-  for (state in rownames(K2)){
-    if (!(state %in% rownames(K1))){
-      return(FALSE)
-    }
-  } 
   return(TRUE)
 }
 
-#' Additional helper functions
-#' Rename duplicate items in a skill function
-#' 
-#' Adds a numeric prefix to duplicate items in a skill function
-#' 
-#' @param skillfun a data frame representing a skill function
-#' @param itemID index of the column in \code{skillfun} that holds the item indicator
-#' @return a data frame representing the skill function with renamed duplicate items
+
 rename_duplicates <- function(skillfun, itemID = 1) {
   items <- skillfun[, itemID]
   counts <- list()
-  
+  item_idx <- numeric(nrow(skillfun))
+  unique_items <- character(0)
+
   for (i in seq_along(items)) {
     item <- items[i]
     if (item %in% names(counts)) {
       counts[[item]] <- counts[[item]] + 1
       skillfun[i, itemID] <- paste0(counts[[item]], "_", item)
+      item_idx[i] <- which(unique_items == item)
     } else {
       counts[[item]] <- 1
       skillfun[i, itemID] <- paste0("1_", item)
+      unique_items <- c(unique_items, item)
+      item_idx[i] <- length(unique_items)
     }
   }
-  return(skillfun)
-}
 
-#' Collapse states with items with numeric prefixes
-#' 
-#' Combines items that differ only in numeric prefix into single items, and then reasseses the states
-#' 
-#' @param bloated_states a matrix representing the knowledge structure with numeric prefixes in the item names
-#' @return a matrix representing the knowledge structure with collapsed states
-collapse_states <- function(bloated_states) {
-  # Remove numeric prefixes followed by underscore (e.g., 1_item_3 → item_3)
-  original_names <- gsub("^\\d+_", "", colnames(bloated_states))
-  # Collapse columns by group
-  collapsed <- do.call(cbind, lapply(unique(original_names), function(name) {
-    cols <- which(original_names == name)
-    if (length(cols) == 1) {
-      return(bloated_states[, cols, drop = FALSE])
-    } else {
-      return(as.data.frame(as.integer(rowSums(bloated_states[, cols]) > 0)))
-    }
-  }))
-
-  colnames(collapsed) <- unique(original_names)
-  
-  # Remove duplicate rows
-  collapsed_unique <- unique(collapsed)
-  
-  # Order rows by rowSums (ascending)
-  collapsed_ordered <- collapsed_unique[order(rowSums(collapsed_unique)), ]
-  
-  # Don't set rownames here - will be done later
-  return(collapsed_ordered)
+  return(list(sf = skillfun, item_idx = item_idx))
 }

@@ -1,3 +1,8 @@
+Changes in 0.6-2
+
+  * New function: delineate.fast(), knowledge structure delineated by skill
+    function (alternative implementation)
+
 Changes in 0.6-1
 
   * Vignette and schoolarithm.Rd: fix typos

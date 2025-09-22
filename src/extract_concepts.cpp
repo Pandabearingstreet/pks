@@ -112,7 +112,7 @@ void sortRows(ConceptMiningState& state);
 void InClose(ConceptMiningState& state, const int c, const int y, uint64_t *Bparent);
 
 //[[Rcpp::export]] 
-Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context) {
+Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool was_dis, Nullable<NumericVector> item_idx_, bool give_full_matrix_result) {
     ConceptMiningState state;
     
     populateTempContext(state, input_context);
@@ -145,7 +145,7 @@ Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context) {
     
     InClose(state, 0, state.startCol, state.Bparent.data());
     
-    // Extract results...
+    // Extract results... 
     std::vector<std::vector<int>> extents;
     std::vector<std::vector<int>> intents;
     
@@ -159,40 +159,53 @@ Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context) {
         }
         extents.push_back(extent);
         
-        std::vector<int> intent;
-        int i = c;
-        while (i >= 0) {
-            short int* bptr = state.startB[i];
-            for (int j = 0; j < state.sizeBnode[i]; j++) {
-                intent.push_back(state.colOriginal[*bptr++]);
-            }
-            i = state.nodeParent[i];
-        }
-        intents.push_back(intent);
+        // std::vector<int> intent;
+        // int i = c;
+        // while (i >= 0) {
+        //     short int* bptr = state.startB[i];
+        //     for (int j = 0; j < state.sizeBnode[i]; j++) {
+        //         intent.push_back(state.colOriginal[*bptr++]);
+        //     }
+        //     i = state.nodeParent[i];
+        // }
+        // intents.push_back(intent);
     }
+
+	Rcpp::NumericVector item_idx;
+	if (item_idx_.isNotNull()){
+		item_idx = item_idx_.get();
+	}
+
+	// create the output formats for R. consider the case of the function.
+	Rcpp::LogicalMatrix extents_binary;
+	if (give_full_matrix_result) {
+		extents_binary = Rcpp::LogicalMatrix(extents.size(), item_idx_.isNotNull()? max(item_idx) : state.m);
+		// initialize to true or false based on whether the function was disjunctive or not.
+		std::fill(extents_binary.begin(), extents_binary.end(), was_dis);
+    }
+
+    Rcpp::List state_names(extents.size());
     
-    Rcpp::LogicalMatrix extents_binary = Rcpp::LogicalMatrix(extents.size(), state.m);
-    Rcpp::LogicalMatrix intents_binary = Rcpp::LogicalMatrix(intents.size(), state.n);
-    Rcpp::List concept_names(extents.size());
-    
-    for (int i = 0; i < extents.size(); i++) {
-        std::string concept_name(state.m, '0');
-        for (int j = 0; j < extents[i].size(); j++) {
-            extents_binary(i, extents[i][j]) = true;
-            concept_name[extents[i][j]] = '1';
+	//if the skill function was disjunctive previously, we can do the complement conversion here instad of in R. 
+    for (int i = 0; i < (int)extents.size(); i++) {
+        std::string state_name(item_idx_.isNotNull()? max(item_idx) : state.m, was_dis ? '1' : '0');
+        for (int j = 0; j < (int)extents[i].size(); j++) {
+			int it_idx = item_idx_.isNotNull()? item_idx[extents[i][j]]-1 : extents[i][j];
+            if (give_full_matrix_result) {
+				extents_binary(i, it_idx) = was_dis ? false : true;
+			}
+            state_name[it_idx] = was_dis ? '0' : '1';
         }	
-        concept_names[i] = concept_name;
+        state_names[i] = state_name;
     }
-    
-    for (int i = 0; i < intents.size(); i++) {
-        for (int j = 0; j < intents[i].size(); j++) {
-            intents_binary(i, intents[i][j]) = true;
-        }
-    }
-    
-    return Rcpp::List::create(Rcpp::Named("Extents") = extents_binary,
-                             Rcpp::Named("Intents") = intents_binary,
-                             Rcpp::Named("ConceptNames") = concept_names);
+
+    if (give_full_matrix_result) {
+        return Rcpp::List::create(Rcpp::Named("Extents") = extents_binary,
+                             Rcpp::Named("StateNames") = state_names);
+	} else {
+		return Rcpp::List::create(
+                             Rcpp::Named("StateNames") = state_names);
+	}
 }
 
 void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& input_context) {

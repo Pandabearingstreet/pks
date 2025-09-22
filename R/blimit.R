@@ -36,7 +36,7 @@
 #' @keywords models
 #' @examples
 #' 
-#' K <- as.binmat(c("0000", "1000", "0100", "1110", "1101", "1111"))
+#' K <- pks::as.binmat(c("0000", "1000", "0100", "1110", "1101", "1111"))
 #' 
 #' set.seed(1234)
 #' info <- blimit(K)

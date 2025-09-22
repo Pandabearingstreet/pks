@@ -68,4 +68,3 @@ delineate <- function(skillfun, itemID = 1) {
   names(classes) <- rownames(K)
   list(K = K, classes = classes)
 }
-
