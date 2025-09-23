@@ -55,13 +55,13 @@ delineate.fast <- function(skillfun, itemID = 1, states_as_matrix=FALSE, give_in
       output$statenames <- unique(output$statenames)
     }  
     if (give_intents) {
-      # group the intents by state name, creating a named list, which holds all intents with that name as their state
-      grouped_intents <- list()
-      for (state_name in unique(rownames(output$intents))) {
-        grouped_intents[[state_name]] <- output$intents[rownames(output$intents) == state_name, ]
-        rownames(grouped_intents[[state_name]]) <- NULL
-      }
-      output$intents <- grouped_intents
+      # # group the intents by state name, creating a named list, which holds all intents with that name as their state
+      # grouped_intents <- list()
+      # for (state_name in unique(rownames(output$intents))) {
+      #   grouped_intents[[state_name]] <- output$intents[rownames(output$intents) == state_name, ]
+      #   rownames(grouped_intents[[state_name]]) <- NULL
+      # }
+      # output$intents <- grouped_intents
     }
   }
 
