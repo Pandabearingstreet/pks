@@ -2,7 +2,7 @@
 \alias{delineate.fast}
 \title{Delineate a Knowledge Structure by a Skill Function (Alternative Implementation)}
 \usage{
-delineate.fast(skillfun, itemID = 1, states_as_matrix=TRUE)
+delineate.fast(skillfun, itemID = 1, states_as_matrix=TRUE, give_intents=FALSE)
 }
 \arguments{
 \item{skillfun}{a data frame representing the skill function.
@@ -11,11 +11,12 @@ It consists of an item indicator and a problem-by-skill indicator matrix.}
 \item{itemID}{index of the column in \code{skillfun} that holds the item
 indicator.}
 \item{states_as_matrix}{logical; if FALSE, return only a list of states}
+\item{give_intents}{logical; if TRUE, return a matrix of intents with the states they delineate as rownames}
 }
 \value{
 A list with the following components:
 \item{K}{A matrix representing the knowledge structure delineated by the skill function (if \code{states_as_matrix = TRUE}).}
-\item{intents}{A named list of matrices. Each name corresponds to a state, and each matrix contains the intents for that state, with columns preserved and entries as 0/1.}
+\item{intents}{A matrix representing the (multiple) intents for each state (if \code{give_intents = TRUE}).}
 \item{statenames}{A character vector of state names (if \code{states_as_matrix = FALSE}).}
 \item{items}{A character vector of unique item names (if \code{states_as_matrix = FALSE}).}
 }
@@ -28,8 +29,6 @@ This implementation automatically detects the type of skill function and applies
 the appropriate delineation algorithm, which can be more efficient than the
 general approach used by \code{\link{delineate}} for large skill functions.
 For smaller skill functions, \code{\link{delineate}} is faster.
-
-The \code{intents} component is now a named list, where each entry is a matrix with the same columns as the skill function, and entries are 0/1 (not logical). Each name corresponds to a state pattern.
 }
 \seealso{
 \code{\link{delineate}}
@@ -50,11 +49,11 @@ sf <- read.table(header = TRUE, text = "
 ")
 
  
-K <- delineate.fast(sf)$K
+K <- delineate.fast(sf, states_as_matrix = TRUE)$K
 # for larger skillfunctions, the full knowledge matrix can be quite large. 
-# in this case, it is better to set states_as_matrix to FALSE, 
+# in this case, it is better to not set states_as_matrix to TRUE, 
 # to only return the state name and unique item names
-output <- delineate.fast(sf, states_as_matrix = FALSE)
+output <- delineate.fast(sf)
 
 # these are of cause equivalent
 statenames <- output$statenames
@@ -63,8 +62,9 @@ K2 <- as.binmat(statenames, col.names = items)
 K.are.same(K, K2)
 
 ## Accessing intents
-intents_list <- delineate.fast(sf)$intents
-str(intents_list) # named list of matrices
+intents <- delineate.fast(sf, give_intents = TRUE)$intents
+
+
 
 ## Plotting the knowledge structure
 if(requireNamespace("relations") &&
