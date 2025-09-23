@@ -11,9 +11,9 @@ delineate_conjunctive_base <- function(skillfun, itemID = 1, is_dis=FALSE, item_
   
   if (give_intents) {
     if (!is_dis) {
-      concepts$Intents <- +(concepts$Intents)
-      rownames(concepts$Intents) <- concepts$StateNames
-      colnames(concepts$Intents) <- skill.names    
+      # concepts$Intents <- concepts$Intents
+      # # rownames(concepts$Intents) <- concepts$StateNames
+      # # colnames(concepts$Intents) <- skill.names    
     } else {
       concepts$Intents <- "for disjunctive case, then amount of intents is too large to be efficiently calculated"
     }
@@ -29,40 +29,24 @@ delineate_conjunctive_base <- function(skillfun, itemID = 1, is_dis=FALSE, item_
   }
 }
 
-delineate.fast <- function(skillfun, itemID = 1, states_as_matrix=FALSE, give_intents=FALSE) {
-
-  # check for case 1
+delineate.fast <- function(skillfun, itemID = 1, states_as_matrix = FALSE, give_intents = FALSE) {
+  # Check for case 1
   if (isCon(skillfun, itemID)) {  
     output <- delineate_conjunctive_base(skillfun, itemID, states_as_matrix = states_as_matrix, give_intents = give_intents)
     return(output)
   } 
-  # case 2 & 3
+  
+  # Case 2 & 3
   item.names <- as.character(skillfun[, itemID])
   unique_items <- unique(item.names)
-  # get a mapping from each row to the idx of its item in the unique item list
+  # Get a mapping from each row to the idx of its item in the unique item list
   item_idx <- match(item.names, unique_items)
   
   if (isDis(skillfun, itemID)) { 
     output <- delineate_conjunctive_base(skillfun, itemID, is_dis = TRUE, item_idx = item_idx, item.names = unique_items, states_as_matrix = states_as_matrix, give_intents = give_intents)
-
   } else {
-    # else, must be case 3:
+    # Else, must be case 3:
     output <- delineate_conjunctive_base(skillfun, itemID, item_idx = item_idx, item.names = unique_items, states_as_matrix = states_as_matrix, give_intents = give_intents)
-    # remove any duplicate states
-    if (states_as_matrix) {
-      output$K <- output$K[!duplicated(rownames(output$K)), ]
-    } else {
-      output$statenames <- unique(output$statenames)
-    }  
-    if (give_intents) {
-      # group the intents by state name, creating a named list, which holds all intents with that name as their state
-      grouped_intents <- list()
-      for (state_name in unique(rownames(output$intents))) {
-        grouped_intents[[state_name]] <- output$intents[rownames(output$intents) == state_name, ]
-        rownames(grouped_intents[[state_name]]) <- NULL
-      }
-      output$intents <- grouped_intents
-    }
   }
 
   return(output)
