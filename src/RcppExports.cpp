@@ -11,22 +11,23 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // compute_concepts
-Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool was_dis, Nullable<NumericVector> item_idx_, bool give_full_matrix_result);
-RcppExport SEXP _pks_compute_concepts(SEXP input_contextSEXP, SEXP was_disSEXP, SEXP item_idx_SEXP, SEXP give_full_matrix_resultSEXP) {
+Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool is_dis, Nullable<NumericVector> item_idx_, bool states_as_matrix, bool give_intents);
+RcppExport SEXP _pks_compute_concepts(SEXP input_contextSEXP, SEXP is_disSEXP, SEXP item_idx_SEXP, SEXP states_as_matrixSEXP, SEXP give_intentsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::LogicalMatrix >::type input_context(input_contextSEXP);
-    Rcpp::traits::input_parameter< bool >::type was_dis(was_disSEXP);
+    Rcpp::traits::input_parameter< bool >::type is_dis(is_disSEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type item_idx_(item_idx_SEXP);
-    Rcpp::traits::input_parameter< bool >::type give_full_matrix_result(give_full_matrix_resultSEXP);
-    rcpp_result_gen = Rcpp::wrap(compute_concepts(input_context, was_dis, item_idx_, give_full_matrix_result));
+    Rcpp::traits::input_parameter< bool >::type states_as_matrix(states_as_matrixSEXP);
+    Rcpp::traits::input_parameter< bool >::type give_intents(give_intentsSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_concepts(input_context, is_dis, item_idx_, states_as_matrix, give_intents));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_pks_compute_concepts", (DL_FUNC) &_pks_compute_concepts, 4},
+    {"_pks_compute_concepts", (DL_FUNC) &_pks_compute_concepts, 5},
     {NULL, NULL, 0}
 };
 

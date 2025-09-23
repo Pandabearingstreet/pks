@@ -105,23 +105,23 @@ generate.skillfun <- function(seed = 42,
   return(df)
 }
 
-make_dis_to_con <- function(sf) {
-  # Create an empty matrix for the conjunctive context
-  unique_objects <- unique(sf$item)
-  I_con <- matrix(0, nrow = length(unique_objects), ncol = ncol(sf) - 1)
-  colnames(I_con) <- colnames(sf)[-1]
+# make_dis_to_con <- function(sf) {
+#   # Create an empty matrix for the conjunctive context
+#   unique_objects <- unique(sf$item)
+#   I_con <- matrix(0, nrow = length(unique_objects), ncol = ncol(sf) - 1)
+#   colnames(I_con) <- colnames(sf)[-1]
 
-  # Sum the attribute values for each unique object
-  for (i in seq_along(unique_objects)) {
-    obj <- unique_objects[i]
-    obj_rows <- sf[sf$item == obj, -1]
-    I_con[i, ] <- as.integer(apply(obj_rows, 2, any))
-  }
+#   # Sum the attribute values for each unique object
+#   for (i in seq_along(unique_objects)) {
+#     obj <- unique_objects[i]
+#     obj_rows <- sf[where(sf$item == obj), -1]
+#     I_con[i, ] <- as.integer(apply(obj_rows, 2, any))
+#   }
   
 
-  I_con <- data.frame(item = unique_objects, I_con)
-  return(I_con)
-}
+#   I_con <- data.frame(item = unique_objects, I_con)
+#   return(I_con)
+# }
 
 make_con_to_dis <- function(sf) {
   if (!"item" %in% colnames(sf)) stop("Input must have a column named 'item'.")
@@ -147,13 +147,13 @@ make_con_to_dis <- function(sf) {
   return(out_df)
 }
 
-isCon <- function(skillfun, itemID){
+isCon <- function(skillfun, itemID=1){
   item.names <- as.character(skillfun[, itemID])
   return(length(item.names) == length(unique(item.names)))
 }
 
 
-isDis <- function(skillfun, itemID){
+isDis <- function(skillfun, itemID=1){
   rowSums <- rowSums(skillfun[, -itemID])
   return(all(rowSums<=1))
 }
@@ -169,28 +169,4 @@ K.are.same <- function(K1, K2){
     }
   }
   return(TRUE)
-}
-
-
-rename_duplicates <- function(skillfun, itemID = 1) {
-  items <- skillfun[, itemID]
-  counts <- list()
-  item_idx <- numeric(nrow(skillfun))
-  unique_items <- character(0)
-
-  for (i in seq_along(items)) {
-    item <- items[i]
-    if (item %in% names(counts)) {
-      counts[[item]] <- counts[[item]] + 1
-      skillfun[i, itemID] <- paste0(counts[[item]], "_", item)
-      item_idx[i] <- which(unique_items == item)
-    } else {
-      counts[[item]] <- 1
-      skillfun[i, itemID] <- paste0("1_", item)
-      unique_items <- c(unique_items, item)
-      item_idx[i] <- length(unique_items)
-    }
-  }
-
-  return(list(sf = skillfun, item_idx = item_idx))
 }

@@ -105,35 +105,41 @@ public:
 
 using namespace Rcpp;
 
-void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& input_context);
+void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& input_context, bool is_dis, const Rcpp::NumericVector item_idx);
 void transferToContext(ConceptMiningState& state);
 void sortColumns(ConceptMiningState& state);
 void sortRows(ConceptMiningState& state);
 void InClose(ConceptMiningState& state, const int c, const int y, uint64_t *Bparent);
 
 //[[Rcpp::export]] 
-Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool was_dis, Nullable<NumericVector> item_idx_, bool give_full_matrix_result) {
+Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool is_dis, Nullable<NumericVector> item_idx_, bool states_as_matrix, bool give_intents = true) {
     ConceptMiningState state;
+
+    // materialize item_idx if provided
+    Rcpp::NumericVector item_idx;
+    if (item_idx_.isNotNull()) {
+        item_idx = item_idx_.get();
+    }
     
-    populateTempContext(state, input_context);
+    populateTempContext(state, input_context, is_dis, item_idx);
     
     for (int i = 0; i < state.n; i++) state.colOriginal[i] = i;
     sortColumns(state);
     
     transferToContext(state);
     
-    for(int i = 0; i < state.m; i++) state.rowOriginal[i] = i;
+    for (int i = 0; i < state.m; i++) state.rowOriginal[i] = i;
     sortRows(state);
     
     state.startCol = 0;
-    while(state.colSup[state.startCol] == 0) state.startCol++;
+    while (state.colSup[state.startCol] == 0) state.startCol++;
     
     state.highc = 1;
     state.A = new int[MAX_FOR_A];
     state.B = new short int[MAX_FOR_B];
     state.bptr = state.B;
     
-    for(int i = 0; i < state.m; i++) {
+    for (int i = 0; i < state.m; i++) {
         state.A[i] = i;
     }
     state.startA[0] = &state.A[0];
@@ -145,90 +151,128 @@ Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool was_dis, Nul
     
     InClose(state, 0, state.startCol, state.Bparent.data());
     
-    // Extract results... 
-    std::vector<std::vector<int>> extents;
-    std::vector<std::vector<int>> intents;
-    
-    for (int c = 0; c < state.highc+1; c++) {
-        int sizeA = (c < state.highc) ? (state.startA[c+1] - state.startA[c]) : state.m - (state.startA[c] - state.A);
-        
-        std::vector<int> extent;
+    // number of states is state.highc+1 (same loop bounds as your original)
+    int n_states = state.highc + 1;
+
+    // compute number of columns for the full matrix (max of item_idx or state.m)
+    int n_cols;
+    if (item_idx_.isNotNull() && !is_dis) {
+        // item_idx contains 1-based indices coming from R; find the maximum and cast to int
+        n_cols = max(item_idx);
+    } else {
+        n_cols = state.m;
+    }
+
+    // prepare output structures
+    Rcpp::LogicalMatrix extents_binary;
+    if (states_as_matrix) {
+        extents_binary = Rcpp::LogicalMatrix(n_states, n_cols);
+        // initialize all entries to is_dis (true/false)
+        std::fill(extents_binary.begin(), extents_binary.end(), is_dis);
+    }
+
+    Rcpp::LogicalMatrix intents_binary;
+    if (give_intents) {
+        intents_binary = Rcpp::LogicalMatrix(n_states, state.n);
+        std::fill(intents_binary.begin(), intents_binary.end(), true);
+    }
+
+    Rcpp::List state_names(n_states);
+
+    // Directly build each state's binary row and name string while iterating A
+    for (int c = 0; c < n_states; ++c) {
+        int sizeA = (c < state.highc) ? (state.startA[c+1] - state.startA[c])
+                                      : state.m - (state.startA[c] - state.A);
+
+        // start with default chars depending on is_dis ('1' means present if not disjunctive)
+        std::string state_name(n_cols, is_dis ? '1' : '0');
+
         int* aptr = state.startA[c];
-        for (int i = 0; i < sizeA; i++) {
-            extent.push_back(state.rowOriginal[*aptr++]);
+        for (int i = 0; i < sizeA; ++i) {
+            int rowOrigIdx = state.rowOriginal[*aptr++]; // original item index (0-based)
+            int it_idx;
+            if (item_idx_.isNotNull() && !is_dis) {
+                // item_idx from R is 1-based; convert to 0-based index
+                it_idx = (int) item_idx[rowOrigIdx] - 1;
+            } else {
+                it_idx = rowOrigIdx;
+            }
+
+            if (states_as_matrix) {
+                // for disjunctive functions `is_dis` was used as default; flip appropriately
+                extents_binary(c, it_idx) = is_dis ? false : true;
+            }
+            state_name[it_idx] = is_dis ? '0' : '1';
         }
-        extents.push_back(extent);
-        
-        // std::vector<int> intent;
-        // int i = c;
-        // while (i >= 0) {
-        //     short int* bptr = state.startB[i];
-        //     for (int j = 0; j < state.sizeBnode[i]; j++) {
-        //         intent.push_back(state.colOriginal[*bptr++]);
-        //     }
-        //     i = state.nodeParent[i];
-        // }
-        // intents.push_back(intent);
+
+        if (give_intents) {
+            // --- Populate intents ---
+            int i = c;
+            while (i >= 0) {
+                short int* bptr = state.startB[i];
+                for (int j = 0; j < state.sizeBnode[i]; j++) {
+                    intents_binary(c, state.colOriginal[*bptr++]) = false;
+                }
+                i = state.nodeParent[i];
+            }
+            if (c == state.highc) {
+                // fill last row with all false
+                std::fill(intents_binary.row(c).begin(), intents_binary.row(c).end(), false);
+            }
+        }
+
+        state_names[c] = state_name;
     }
 
-	Rcpp::NumericVector item_idx;
-	if (item_idx_.isNotNull()){
-		item_idx = item_idx_.get();
-	}
-
-	// create the output formats for R. consider the case of the function.
-	Rcpp::LogicalMatrix extents_binary;
-	if (give_full_matrix_result) {
-		extents_binary = Rcpp::LogicalMatrix(extents.size(), item_idx_.isNotNull()? max(item_idx) : state.m);
-		// initialize to true or false based on whether the function was disjunctive or not.
-		std::fill(extents_binary.begin(), extents_binary.end(), was_dis);
+    if (states_as_matrix) {
+        if (give_intents) {
+            return Rcpp::List::create(Rcpp::Named("Extents") = extents_binary,
+                                      Rcpp::Named("Intents") = intents_binary,
+                                      Rcpp::Named("StateNames") = state_names);
+        } else {
+            return Rcpp::List::create(Rcpp::Named("Extents") = extents_binary,
+                                      Rcpp::Named("StateNames") = state_names);
+        }
+    } else {
+        if (give_intents) {
+            return Rcpp::List::create(Rcpp::Named("Intents") = intents_binary,
+                                      Rcpp::Named("StateNames") = state_names);
+        } else {
+            return Rcpp::List::create(Rcpp::Named("StateNames") = state_names);
+        }
     }
-
-    Rcpp::List state_names(extents.size());
-    
-	//if the skill function was disjunctive previously, we can do the complement conversion here instad of in R. 
-    for (int i = 0; i < (int)extents.size(); i++) {
-        std::string state_name(item_idx_.isNotNull()? max(item_idx) : state.m, was_dis ? '1' : '0');
-        for (int j = 0; j < (int)extents[i].size(); j++) {
-			int it_idx = item_idx_.isNotNull()? item_idx[extents[i][j]]-1 : extents[i][j];
-            if (give_full_matrix_result) {
-				extents_binary(i, it_idx) = was_dis ? false : true;
-			}
-            state_name[it_idx] = was_dis ? '0' : '1';
-        }	
-        state_names[i] = state_name;
-    }
-
-    if (give_full_matrix_result) {
-        return Rcpp::List::create(Rcpp::Named("Extents") = extents_binary,
-                             Rcpp::Named("StateNames") = state_names);
-	} else {
-		return Rcpp::List::create(
-                             Rcpp::Named("StateNames") = state_names);
-	}
 }
 
-void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& input_context) {
-    state.m = input_context.nrow();
+void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& input_context, bool is_dis, const Rcpp::NumericVector item_idx) {
+    // how many unique items are there?
+	state.m = is_dis ? max(item_idx) : input_context.nrow();
+	int original_nrows = input_context.nrow();
     state.n = input_context.ncol();
     
     state.mArray = (state.m-1)/64 + 1;
     state.contextTemp = new uint64_t*[state.n];
-    
     for (int j = 0; j < state.n; j++) {
         state.contextTemp[j] = new uint64_t[state.mArray];
         for(int i = 0; i < state.mArray; i++) {
-            state.contextTemp[j][i] = 0;
+            state.contextTemp[j][i] = is_dis ? ~0ULL : 0;
         }
         state.colSup[j] = 0;
     }
-    
-    for (int i = 0; i < state.m; i++) {
-        for (int j = 0; j < state.n; j++) {
-            if (input_context(i, j)) {
-                state.contextTemp[j][(i >> 6)] |= (1ULL << (i % 64));
-                state.colSup[j]++;
-            }
+    for (int i = 0; i < original_nrows; i++) {
+		int it_idx = is_dis ? (int) item_idx[i] - 1 : i;
+        for (int j = 0; j < state.n; j++) {	
+			if (!is_dis) {
+				if (input_context(i, j)) {
+					state.contextTemp[j][(it_idx >> 6)] |= (1ULL << (it_idx % 64));
+					state.colSup[j]++;
+				}
+			} else {
+				if (!input_context(i, j)) {
+					// invert here, write 0
+					state.contextTemp[j][(it_idx >> 6)] &= ~(1ULL << (it_idx % 64));
+					state.colSup[j]++;
+				}
+			}
         }
     }
 }
