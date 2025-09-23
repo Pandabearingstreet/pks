@@ -270,8 +270,11 @@ void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& i
 				if (!input_context(i, j)) {
 					// invert here, write 0
 					state.contextTemp[j][(it_idx >> 6)] &= ~(1ULL << (it_idx % 64));
+					
+				}else{
 					state.colSup[j]++;
 				}
+				
 			}
         }
     }
