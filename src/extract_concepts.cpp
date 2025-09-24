@@ -262,12 +262,14 @@ void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& i
 		int it_idx = is_dis ? (int) item_idx[i] - 1 : i;
         for (int j = 0; j < state.n; j++) {	
 			if (!is_dis) {
-				if (input_context(i, j)) {
+                // these to input_contex checks are reversed to emulate the effect of passing the complement of the skillfunction.
+                // tiny time save, compared to doing it in R, but easy to do.
+				if (!input_context(i, j)) {
 					state.contextTemp[j][(it_idx >> 6)] |= (1ULL << (it_idx % 64));
 					state.colSup[j]++;
 				}
 			} else {
-				if (!input_context(i, j)) {
+				if (input_context(i, j)) {
 					// invert here, write 0
 					state.contextTemp[j][(it_idx >> 6)] &= ~(1ULL << (it_idx % 64));
 					

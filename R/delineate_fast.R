@@ -5,7 +5,7 @@ delineate_conjunctive_base <- function(skillfun, itemID = 1, is_dis=FALSE, item_
   mu <- as.matrix(skillfun[, -itemID])
   nskills <- ncol(mu)
   skill.names <- colnames(mu)
-  I <- !mu
+  I <- mu
 
   concepts <- compute_concepts(I, is_dis, item_idx, states_as_matrix, give_intents)
   
