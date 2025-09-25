@@ -44,6 +44,8 @@ export(
   "blimit"
 )
 export(K.are.same)
+export(conjunctive.as.disjunctive)
+export(disjunctive.as.conjunctive)
 export(delineate.fast)
 export(generate.skillfun)
 
