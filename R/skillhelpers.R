@@ -105,23 +105,23 @@ generate.skillfun <- function(seed = 42,
   return(df)
 }
 
-# make_dis_to_con <- function(sf) {
-#   # Create an empty matrix for the conjunctive context
-#   unique_objects <- unique(sf$item)
-#   I_con <- matrix(0, nrow = length(unique_objects), ncol = ncol(sf) - 1)
-#   colnames(I_con) <- colnames(sf)[-1]
+make_dis_to_con <- function(sf) {
+  # Create an empty matrix for the conjunctive context
+  unique_objects <- unique(sf$item)
+  I_con <- matrix(0, nrow = length(unique_objects), ncol = ncol(sf) - 1)
+  colnames(I_con) <- colnames(sf)[-1]
 
-#   # Sum the attribute values for each unique object
-#   for (i in seq_along(unique_objects)) {
-#     obj <- unique_objects[i]
-#     obj_rows <- sf[where(sf$item == obj), -1]
-#     I_con[i, ] <- as.integer(apply(obj_rows, 2, any))
-#   }
+  # Sum the attribute values for each unique object
+  for (i in seq_along(unique_objects)) {
+    obj <- unique_objects[i]
+    obj_rows <- sf[where(sf$item == obj), -1]
+    I_con[i, ] <- as.integer(apply(obj_rows, 2, any))
+  }
   
 
-#   I_con <- data.frame(item = unique_objects, I_con)
-#   return(I_con)
-# }
+  I_con <- data.frame(item = unique_objects, I_con)
+  return(I_con)
+}
 
 make_con_to_dis <- function(sf) {
   if (!"item" %in% colnames(sf)) stop("Input must have a column named 'item'.")
