@@ -22,11 +22,11 @@ delineate_conjunctive_base <- function(skillfun, itemID = 1, is_dis=FALSE, item_
     rownames(states) <- concepts$StateNames
     return(list(K = states, Competencies = if (give_competencies) concepts$Intents else NULL))
   } else {
-    return(list(statenames = unlist(concepts$StateNames), items = item.names, Competencies = if (give_competencies) concepts$Intents else NULL))
+    return(list(Statenames = unlist(concepts$StateNames), Items = item.names, Competencies = if (give_competencies) concepts$Intents else NULL))
   }
 }
 
-delineate.fast <- function(skillfun, itemID = 1, states_as_matrix=FALSE, give_competencies=FALSE, force_general_case=FALSE) {
+delineate.fast <- function(skillfun, itemID = 1, states_as_matrix=TRUE, give_competencies=TRUE, force_general_case=FALSE) {
   item.names <- as.character(skillfun[, itemID])
   unique_items <- unique(item.names)
   # check for case 1
@@ -49,7 +49,7 @@ delineate.fast <- function(skillfun, itemID = 1, states_as_matrix=FALSE, give_co
     if (states_as_matrix) {
       output$K <- output$K[!duplicated(rownames(output$K)), ]
     } else {
-      output$statenames <- unique(output$statenames)
+      output$Statenames <- unique(output$Statenames)
     }  
   }
 

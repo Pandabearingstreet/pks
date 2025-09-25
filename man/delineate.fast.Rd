@@ -2,7 +2,7 @@
 \alias{delineate.fast}
 \title{Delineate a Knowledge Structure by a Skill Function (Alternative Implementation)}
 \usage{
-delineate.fast(skillfun, itemID = 1, states_as_matrix=TRUE, give_intents=FALSE)
+delineate.fast(skillfun, itemID = 1, states_as_matrix=TRUE, give_intents=TRUE, force_general_case=FALSE)
 }
 \arguments{
 \item{skillfun}{a data frame representing the skill function.
@@ -12,6 +12,7 @@ It consists of an item indicator and a problem-by-skill indicator matrix.}
 indicator.}
 \item{states_as_matrix}{logical; if FALSE, return only a list of states}
 \item{give_intents}{logical; if TRUE, return a matrix of intents with the states they delineate as rownames}
+\item{force_general_case}{logical; if TRUE, force the general case algorithm to be used, even if the skill function is disjunctive}
 }
 \value{
 A list with the following components:
@@ -51,9 +52,9 @@ sf <- read.table(header = TRUE, text = "
  
 K <- delineate.fast(sf, states_as_matrix = TRUE)$K
 # for larger skillfunctions, the full knowledge matrix can be quite large. 
-# in this case, it is better to not set states_as_matrix to TRUE, 
+# in this case, it is better to set states_as_matrix to FALSE, 
 # to only return the state name and unique item names
-output <- delineate.fast(sf)
+output <- delineate.fast(sf, states_as_matrix =FALSE)
 
 # these are of cause equivalent
 statenames <- output$statenames
@@ -63,8 +64,6 @@ K.are.same(K, K2)
 
 ## Accessing intents
 intents <- delineate.fast(sf, give_intents = TRUE)$intents
-
-
 
 ## Plotting the knowledge structure
 if(requireNamespace("relations") &&
