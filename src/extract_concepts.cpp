@@ -6,6 +6,8 @@
 #include <cstring>
 #include <cstdint>
 
+
+// these values are taken from the original implementation by Andrews.
 #define MAX_CONS 50000000       // up to 50 million concepts
 #define MAX_COLS 20000          // up to 20,000 attributes
 #define MAX_ROWS 2000000        // up to 2 million objects
@@ -151,7 +153,7 @@ Rcpp::List compute_concepts(Rcpp::LogicalMatrix input_context, bool is_dis, Null
     
     InClose(state, 0, state.startCol, state.Bparent.data());
     
-    // number of states is state.highc+1 (same loop bounds as your original)
+    // number of states is state.highc+1 
     int n_states = state.highc + 1;
 
     // compute number of columns for the full matrix (max of item_idx or state.m)
@@ -262,7 +264,8 @@ void populateTempContext(ConceptMiningState& state, const Rcpp::LogicalMatrix& i
 		int it_idx = is_dis ? (int) item_idx[i] - 1 : i;
         for (int j = 0; j < state.n; j++) {	
 			if (!is_dis) {
-                // these to input_contex checks are reversed to emulate the effect of passing the complement of the skillfunction.
+                // these to input_contex checks are reversed to emulate the effect 
+                // of passing the complement of the skillfunction.
                 // tiny time save, compared to doing it in R, but easy to do.
 				if (!input_context(i, j)) {
 					state.contextTemp[j][(it_idx >> 6)] |= (1ULL << (it_idx % 64));
