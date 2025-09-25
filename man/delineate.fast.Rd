@@ -2,7 +2,11 @@
 \alias{delineate.fast}
 \title{Delineate a Knowledge Structure by a Skill Function (Alternative Implementation)}
 \usage{
-delineate.fast(skillfun, itemID = 1, states_as_matrix=TRUE, give_intents=TRUE, force_general_case=FALSE)
+delineate.fast( skillfun, 
+                itemID = 1, 
+                states_as_matrix=TRUE, 
+                give_competencies=TRUE, 
+                force_general_case=FALSE)
 }
 \arguments{
 \item{skillfun}{a data frame representing the skill function.
@@ -11,15 +15,15 @@ It consists of an item indicator and a problem-by-skill indicator matrix.}
 \item{itemID}{index of the column in \code{skillfun} that holds the item
 indicator.}
 \item{states_as_matrix}{logical; if FALSE, return only a list of states}
-\item{give_intents}{logical; if TRUE, return a matrix of intents with the states they delineate as rownames}
+\item{give_competencies}{logical; if TRUE, return a matrix of intents with the states they delineate as rownames}
 \item{force_general_case}{logical; if TRUE, force the general case algorithm to be used, even if the skill function is disjunctive}
 }
 \value{
 A list with the following components:
 \item{K}{A matrix representing the knowledge structure delineated by the skill function (if \code{states_as_matrix = TRUE}).}
-\item{intents}{A matrix representing the (multiple) intents for each state (if \code{give_intents = TRUE}).}
-\item{statenames}{A character vector of state names (if \code{states_as_matrix = FALSE}).}
-\item{items}{A character vector of unique item names (if \code{states_as_matrix = FALSE}).}
+\item{Competencies}{A matrix representing the (multiple) intents for each state (if \code{give_competencies = TRUE}).}
+\item{Statenames}{A character vector of state names (if \code{states_as_matrix = FALSE}).}
+\item{Items}{A character vector of unique item names (if \code{states_as_matrix = FALSE}).}
 }
 \description{
 Computes the knowledge structure delineated by a skill function using
@@ -57,13 +61,13 @@ K <- delineate.fast(sf, states_as_matrix = TRUE)$K
 output <- delineate.fast(sf, states_as_matrix =FALSE)
 
 # these are of cause equivalent
-statenames <- output$statenames
-items <- output$items
+statenames <- output$Statenames
+items <- output$Items
 K2 <- as.binmat(statenames, col.names = items)
 K.are.same(K, K2)
 
 ## Accessing intents
-intents <- delineate.fast(sf, give_intents = TRUE)$intents
+intents <- delineate.fast(sf, give_competencies = TRUE)$Competencies
 
 ## Plotting the knowledge structure
 if(requireNamespace("relations") &&
